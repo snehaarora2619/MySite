@@ -1,0 +1,72 @@
+body{
+    margin: 1px;
+    background-color: rgb(0,0,0);
+    color: aliceblue;
+}
+h1 {
+    text-align: center;
+    color: aliceblue;
+    font-family: "Signika Negative", sans-serif;
+}
+nav{
+    position: sticky;
+    top: 0;
+    background-color: rgb(49, 49, 49);
+    padding: 10px;
+    text-align: center; 
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: 1px; 
+    border-bottom: 4px solid yellow;
+
+}
+nav a{
+    color: aliceblue;
+    text-decoration: none;
+    margin: 35px;
+} 
+#dnav{
+    color: rgb(207, 207, 177);
+    font-weight: bold;
+}
+.contact-info {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    font-size: 1.2em;
+    font-family: 'Poppins', sans-serif;
+    line-height: 3;
+}
+
+.contact-image {
+    margin-right: 0px; /* Adjust spacing between image and text */
+    width: 300px; /* Adjust size as needed */
+    height: auto; /* Maintain aspect ratio */
+    margin-top: 120px;
+}
+
+.det {
+    text-align: left; /* Align text to the left */
+    margin-left: 300px;
+    margin-top: 0px;
+}
+form{
+    text-align: center;
+    font-family:'Calibri', sans-serif;
+}
+textarea{
+    background-color: gray;
+    border-radius: 5px;
+    margin-left: ;
+    height: 50px;
+    width: 2000px
+    color: rgb(75, 51, 7);
+}
+textarea::placeholder{
+    color: rgb(192, 192, 192);
+    text-align: center;
+}
+form input{
+    cursor: pointer;
+    height: 20px;
+    width: 60px;
+}
