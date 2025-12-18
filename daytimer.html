@@ -256,75 +256,45 @@
 
     <script>
         const categories = [
-            { id: 'sleep', name: '😴 Rest & Recharge', goal: 9, color: '#3b82f6' },
-            { id: 'family', name: '💙 Family & Friends', goal: 3, color: '#60a5fa' },
-            { id: 'study', name: '📚 Learning & Growth', goal: 3, color: '#818cf8' },
-            { id: 'email', name: '📧 Communication', goal: 3, color: '#06b6d4' },
-            { id: 'productive', name: '💼 Deep Work', goal: 3, color: '#3b82f6' },
-            { id: 'eating', name: '🍽️ Nourishment', goal: 3, color: '#38bdf8' },
-            { id: 'custom', name: '⭐ Custom Activity', goal: 0, color: '#93c5fd' }
+            { id: 'sleep', name: '😴 Rest & Recharge', goal: 9 },
+            { id: 'family', name: '💙 Family & Friends', goal: 3 },
+            { id: 'study', name: '📚 Learning & Growth', goal: 3 },
+            { id: 'email', name: '📧 Communication', goal: 3 },
+            { id: 'productive', name: '💼 Deep Work', goal: 3 },
+            { id: 'eating', name: '🍽️ Nourishment', goal: 3 },
+            { id: 'custom', name: '⭐ Custom Activity', goal: 0 }
         ];
 
-        let timers = {};
-
-        // Load saved data from memory
-        function loadTimers() {
-            const saved = sessionStorage.getItem('dailyTimers');
-            if (saved) {
-                const data = JSON.parse(saved);
-                Object.keys(data).forEach(key => {
-                    if (timers[key]) {
-                        timers[key].seconds = data[key].seconds || 0;
-                        timers[key].isRunning = data[key].isRunning || false;
-                        timers[key].startTime = data[key].startTime || null;
-                    }
-                });
-            }
-        }
-
-        // Save data to memory
-        function saveTimers() {
-            const data = {};
-            Object.keys(timers).forEach(key => {
-                data[key] = {
-                    seconds: timers[key].seconds,
-                    isRunning: timers[key].isRunning,
-                    startTime: timers[key].startTime
-                };
-            });
-            sessionStorage.setItem('dailyTimers', JSON.stringify(data));
-        }
-
-        // Initialize timers
-        categories.forEach(cat => {
-            timers[cat.id] = {
-                seconds: 0,
-                isRunning: false,
-                interval: null,
-                startTime: null
-            };
-        });
-
-        loadTimers();
-
-        function formatTime(seconds) {
-            const hrs = Math.floor(seconds / 3600);
-            const mins = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
             return `${hrs}h ${mins}m ${secs}s`;
         }
 
+        function getElapsedTime(id) {
+            const isRunning = localStorage.getItem(`${id}_isRunning`) === 'true';
+            const startTime = Number(localStorage.getItem(`${id}_startTime`)) || 0;
+            const pausedTime = Number(localStorage.getItem(`${id}_pausedTime`)) || 0;
+
+            if (isRunning && startTime) {
+                return Date.now() - startTime;
+            }
+            return pausedTime;
+        }
+
         function updateDisplay(id) {
-            const timer = timers[id];
+            const elapsed = getElapsedTime(id);
             const category = categories.find(c => c.id === id);
             const card = document.querySelector(`[data-id="${id}"]`);
             
             const displayEl = card.querySelector('.timer-display');
-            displayEl.textContent = formatTime(timer.seconds);
+            displayEl.textContent = formatTime(elapsed);
             
             const progressEl = card.querySelector('.progress-fill');
             if (category.goal > 0) {
-                const progressPercent = Math.min((timer.seconds / (category.goal * 3600)) * 100, 100);
+                const progressPercent = Math.min((elapsed / (category.goal * 3600 * 1000)) * 100, 100);
                 progressEl.style.width = progressPercent + '%';
             } else {
                 progressEl.style.width = '0%';
@@ -333,51 +303,54 @@
             updateSummary();
         }
 
+        function updateAllDisplays() {
+            categories.forEach(cat => updateDisplay(cat.id));
+        }
+
         function startTimer(id) {
-            const timer = timers[id];
-            if (timer.isRunning) return;
+            const isRunning = localStorage.getItem(`${id}_isRunning`) === 'true';
+            if (isRunning) return;
+
+            const pausedTime = Number(localStorage.getItem(`${id}_pausedTime`)) || 0;
+            const startTime = Date.now() - pausedTime;
             
-            timer.isRunning = true;
-            timer.startTime = Date.now();
+            localStorage.setItem(`${id}_startTime`, startTime);
+            localStorage.setItem(`${id}_isRunning`, 'true');
+            
             const card = document.querySelector(`[data-id="${id}"]`);
             card.classList.add('active');
             
-            timer.interval = setInterval(() => {
-                timer.seconds++;
-                updateDisplay(id);
-                saveTimers();
-            }, 1000);
-            
-            saveTimers();
+            updateDisplay(id);
         }
 
         function pauseTimer(id) {
-            const timer = timers[id];
-            if (!timer.isRunning) return;
+            const isRunning = localStorage.getItem(`${id}_isRunning`) === 'true';
+            if (!isRunning) return;
+
+            const elapsed = getElapsedTime(id);
+            localStorage.setItem(`${id}_pausedTime`, elapsed);
+            localStorage.setItem(`${id}_isRunning`, 'false');
             
-            timer.isRunning = false;
-            timer.startTime = null;
             const card = document.querySelector(`[data-id="${id}"]`);
             card.classList.remove('active');
             
-            clearInterval(timer.interval);
-            saveTimers();
+            updateDisplay(id);
         }
 
         function resetTimer(id) {
             pauseTimer(id);
-            timers[id].seconds = 0;
-            timers[id].startTime = null;
+            localStorage.setItem(`${id}_pausedTime`, 0);
+            localStorage.setItem(`${id}_startTime`, 0);
             updateDisplay(id);
-            saveTimers();
         }
 
         function updateSummary() {
-            let totalSeconds = 0;
-            Object.values(timers).forEach(timer => {
-                totalSeconds += timer.seconds;
+            let totalMilliseconds = 0;
+            categories.forEach(cat => {
+                totalMilliseconds += getElapsedTime(cat.id);
             });
             
+            const totalSeconds = Math.floor(totalMilliseconds / 1000);
             const totalHours = Math.floor(totalSeconds / 3600);
             const totalMins = Math.floor((totalSeconds % 3600) / 60);
             document.getElementById('totalTracked').textContent = `${totalHours}h ${totalMins}m`;
@@ -412,34 +385,24 @@
             return card;
         }
 
+        // Initialize
         const grid = document.getElementById('timersGrid');
         categories.forEach(cat => {
             grid.appendChild(createTimerCard(cat));
         });
 
-        // Restore running timers on page load
-        Object.keys(timers).forEach(id => {
-            const timer = timers[id];
-            updateDisplay(id);
-            
-            if (timer.isRunning && timer.startTime) {
-                // Calculate elapsed time while page was closed
-                const elapsed = Math.floor((Date.now() - timer.startTime) / 1000);
-                timer.seconds += elapsed;
-                updateDisplay(id);
-                
-                // Restart the timer
-                const card = document.querySelector(`[data-id="${id}"]`);
+        // Restore state and mark active timers
+        categories.forEach(cat => {
+            const isRunning = localStorage.getItem(`${cat.id}_isRunning`) === 'true';
+            if (isRunning) {
+                const card = document.querySelector(`[data-id="${cat.id}"]`);
                 card.classList.add('active');
-                timer.startTime = Date.now();
-                
-                timer.interval = setInterval(() => {
-                    timer.seconds++;
-                    updateDisplay(id);
-                    saveTimers();
-                }, 1000);
             }
+            updateDisplay(cat.id);
         });
+
+        // Update all timers every second
+        setInterval(updateAllDisplays, 1000);
     </script>
 </body>
 </html>
