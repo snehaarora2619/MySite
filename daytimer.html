@@ -267,13 +267,45 @@
 
         let timers = {};
 
+        // Load saved data from memory
+        function loadTimers() {
+            const saved = sessionStorage.getItem('dailyTimers');
+            if (saved) {
+                const data = JSON.parse(saved);
+                Object.keys(data).forEach(key => {
+                    if (timers[key]) {
+                        timers[key].seconds = data[key].seconds || 0;
+                        timers[key].isRunning = data[key].isRunning || false;
+                        timers[key].startTime = data[key].startTime || null;
+                    }
+                });
+            }
+        }
+
+        // Save data to memory
+        function saveTimers() {
+            const data = {};
+            Object.keys(timers).forEach(key => {
+                data[key] = {
+                    seconds: timers[key].seconds,
+                    isRunning: timers[key].isRunning,
+                    startTime: timers[key].startTime
+                };
+            });
+            sessionStorage.setItem('dailyTimers', JSON.stringify(data));
+        }
+
+        // Initialize timers
         categories.forEach(cat => {
             timers[cat.id] = {
                 seconds: 0,
                 isRunning: false,
-                interval: null
+                interval: null,
+                startTime: null
             };
         });
+
+        loadTimers();
 
         function formatTime(seconds) {
             const hrs = Math.floor(seconds / 3600);
@@ -306,13 +338,17 @@
             if (timer.isRunning) return;
             
             timer.isRunning = true;
+            timer.startTime = Date.now();
             const card = document.querySelector(`[data-id="${id}"]`);
             card.classList.add('active');
             
             timer.interval = setInterval(() => {
                 timer.seconds++;
                 updateDisplay(id);
+                saveTimers();
             }, 1000);
+            
+            saveTimers();
         }
 
         function pauseTimer(id) {
@@ -320,16 +356,20 @@
             if (!timer.isRunning) return;
             
             timer.isRunning = false;
+            timer.startTime = null;
             const card = document.querySelector(`[data-id="${id}"]`);
             card.classList.remove('active');
             
             clearInterval(timer.interval);
+            saveTimers();
         }
 
         function resetTimer(id) {
             pauseTimer(id);
             timers[id].seconds = 0;
+            timers[id].startTime = null;
             updateDisplay(id);
+            saveTimers();
         }
 
         function updateSummary() {
@@ -375,6 +415,30 @@
         const grid = document.getElementById('timersGrid');
         categories.forEach(cat => {
             grid.appendChild(createTimerCard(cat));
+        });
+
+        // Restore running timers on page load
+        Object.keys(timers).forEach(id => {
+            const timer = timers[id];
+            updateDisplay(id);
+            
+            if (timer.isRunning && timer.startTime) {
+                // Calculate elapsed time while page was closed
+                const elapsed = Math.floor((Date.now() - timer.startTime) / 1000);
+                timer.seconds += elapsed;
+                updateDisplay(id);
+                
+                // Restart the timer
+                const card = document.querySelector(`[data-id="${id}"]`);
+                card.classList.add('active');
+                timer.startTime = Date.now();
+                
+                timer.interval = setInterval(() => {
+                    timer.seconds++;
+                    updateDisplay(id);
+                    saveTimers();
+                }, 1000);
+            }
         });
     </script>
 </body>
